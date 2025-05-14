@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Measurement Uncertainty Report Generator</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+    label, textarea, input, button { display: block; margin-top: 10px; }
+    button { width: auto; padding: 8px 16px; margin-right: 10px; background: #4CAF50; color: white; border: none; cursor: pointer; border-radius: 4px; }
+    button:hover { background: #45a049; }
+    h2, h3, h4 { margin-top: 30px; color: #2c3e50; }
+    table { border-collapse: collapse; margin-top: 15px; width: 100%; font-size: 0.9em; }
+    caption { caption-side: top; font-weight: bold; margin-bottom: 8px; text-align: left; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background-color: #f8f9fa; font-weight: bold; }
+    .left-align { text-align: left; }
+    .section { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #eee; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .header img { max-height: 80px; max-width: 200px; }
+    .inputs { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    .subtitle { font-style: italic; font-size: 0.85em; color: #666; margin: 4px 0 12px; }
+    .typeb-input { width: 100px; }
+    .footer { display: flex; justify-content: space-between; margin-top: 30px; }
+    .footer div { width: 45%; }
+    .buttons { margin: 20px 0; display: flex; }
+    .signature-line { border-top: 1px solid #000; width: 200px; margin-top: 50px; }
+    .report-title { text-align: center; margin: 20px 0; color: #2c3e50; }
+    .summary-box { background: #f8f9fa; padding: 15px; border-left: 4px solid #4CAF50; margin: 20px 0; }
+    .typeb-container { margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; }
+    .typeb-header { display: flex; justify-content: space-between; align-items: center; }
+    .typeb-controls { display: flex; gap: 10px; }
+    .typeb-controls button { padding: 4px 8px; font-size: 0.8em; }
+    .remove-btn { background: #f44336 !important; }
+    .remove-btn:hover { background: #d32f2f !important; }
+    .add-btn { background: #2196F3 !important; }
+    .add-btn:hover { background: #0b7dda !important; }
+    .error-message { color: #f44336; margin-top: 10px; display: none; }
+    @media print {
+      #inputSections { display: none; }
+      button { display: none; }
+      body { margin: 0; padding: 10px; font-size: 12pt; }
+      .section { page-break-inside: avoid; }
+      #reportOutput { display: block !important; }
+      .error-message { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Input Sections -->
+  <div id="inputSections">
+    <!-- Header Inputs -->
+    <div class="header section">
+      <div>
+        <label><strong>Company Name:</strong></label>
+        <input type="text" id="company" placeholder="Enter company name" style="width: 300px;">
+        <label><strong>Prepared By:</strong></label>
+        <input type="text" id="preparedBy" placeholder="Analyst Name" style="width: 300px;">
+        <label><strong>Approved By:</strong></label>
+        <input type="text" id="approvedBy" placeholder="Quality Manager" style="width: 300px;">
+        <label><strong>Report Date:</strong></label>
+        <input type="date" id="reportDateInput" style="width: 300px;">
+      </div>
+      <div>
+        <label><strong>Upload Logo:</strong></label>
+        <input type="file" id="logoInput" accept="image/*">
+      </div>
+    </div>
+
+    <!-- Report Title -->
+    <div class="section">
+      <h1 class="report-title">Measurement Uncertainty Report</h1>
+    </div>
+
+    <!-- Parameter and Sample Info -->
+    <div class="section">
+      <h3>1. Test Information</h3>
+      <label>Parameter:</label>
+      <input type="text" id="parameter" value="Chloride" style="width: 300px;">
+      <label>Sample Type:</label>
+      <input type="text" id="sampleType" value="Construction Water Samples" style="width: 300px;">
+    </div>
+
+    <!-- Scope -->
+    <div class="section">
+      <h3>2. Scope</h3>
+      <p>This report estimates the measurement uncertainty for the determination of 
+         <strong id="scopeParam">Chloride</strong> in 
+         <strong id="scopeSample">Construction Water Samples</strong> using the method described below.</p>
+    </div>
+
+    <!-- Test Method -->
+    <div class="section">
+      <h3>3. Test Method</h3>
+      <label>Method Name/Reference:</label>
+      <input type="text" id="method" placeholder="Enter measurement method" style="width: 100%;">
+      <label>Measurement Procedure:</label>
+      <textarea id="procedure" rows="3" placeholder="Enter detailed measurement procedure" style="width: 100%;"></textarea>
+      <label>Calculation Formula:</label>
+      <textarea id="formula" rows="2" placeholder="Enter calculation formula (e.g., H₂O or 10²)" style="width: 100%;"></textarea>
+    </div>
+
+    <!-- Type A: Repeatability Inputs -->
+    <div class="section">
+      <h3>4. Type A Uncertainty (Repeatability)</h3>
+      <p>Based on repeatability study (n = 5).</p>
+      <label>Enter 5 Repeatability Values:</label>
+      <div class="inputs">
+        <input type="number" id="val1" placeholder="X₁" step="0.0001">
+        <input type="number" id="val2" placeholder="X₂" step="0.0001">
+        <input type="number" id="val3" placeholder="X₃" step="0.0001">
+        <input type="number" id="val4" placeholder="X₄" step="0.0001">
+        <input type="number" id="val5" placeholder="X₅" step="0.0001">
+      </div>
+      <p class="error-message" id="typeAError">Please enter at least one valid Type A value.</p>
+    </div>
+
+    <!-- Type B: Sources Inputs -->
+    <div class="section" id="typeBSection">
+      <h3>5. Type B Uncertainty Sources</h3>
+      <div class="buttons">
+        <button class="add-btn" onclick="addTypeBSource()">Add Source</button>
+      </div>
+      
+      <!-- Type B sources -->
+      <div id="typeBContainer">
+        <!-- Sources will be added here dynamically -->
+      </div>
+    </div>
+
+    <!-- Generate Button -->
+    <div class="buttons">
+      <button onclick="generateReport()">Generate Full Report</button>
+      <button onclick="window.print()">Print Report</button>
+      <button onclick="exportToExcel()">Export to Excel</button>
+    </div>
+    <p class="error-message" id="generalError"></p>
+  </div>
+
+  <!-- Report Output Sections -->
+  <div id="reportOutput" style="display: none;">
+    <!-- Company Header -->
+    <div class="header section">
+      <h2 id="reportCompany"></h2>
+      <div id="reportLogo"></div>
+    </div>
+    
+    <!-- Report Title -->
+    <div class="section">
+      <h1 class="report-title">Measurement Uncertainty Report</h1>
+      <p><strong>Date:</strong> <span id="reportDate"></span></p>
+    </div>
+    
+    <!-- Test Information -->
+    <div class="section">
+      <h3>1. Test Information</h3>
+      <p><strong>Parameter:</strong> <span id="reportParam"></span></p>
+      <p><strong>Sample Type:</strong> <span id="reportSample"></span></p>
+    </div>
+    
+    <!-- Scope -->
+    <div class="section">
+      <h3>2. Scope</h3>
+      <p>This report estimates the measurement uncertainty for the determination of 
+         <strong id="reportScopeParam"></strong> in 
+         <strong id="reportScopeSample"></strong> using the method described below.</p>
+    </div>
+    
+    <!-- Test Method -->
+    <div class="section">
+      <h3>3. Test Method</h3>
+      <p><strong>Method Name/Reference:</strong> <span id="reportMethod"></span></p>
+      <p><strong>Measurement Procedure:</strong></p>
+      <div style="white-space: pre-line;" id="reportProcedure"></div>
+      <p><strong>Calculation Formula:</strong> <span id="reportFormula"></span></p>
+    </div>
+    
+    <!-- Type A Results -->
+    <div class="section">
+      <h3>4. Type A Uncertainty Evaluation</h3>
+      <p>Repeatability study based on <span id="reportN"></span> measurements:</p>
+      <table id="typeATable">
+        <thead>
+          <tr>
+            <th>Measurement</th>
+            <th>Value (X<sub>i</sub>)</th>
+            <th>Deviation (X<sub>i</sub> - X̄)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot>
+          <tr>
+            <th>Mean (X̄)</th>
+            <td id="reportMean"></td>
+            <td>-</td>
+          </tr>
+          <tr>
+            <th>Standard Deviation (s)</th>
+            <td id="reportSD"></td>
+            <td>-</td>
+          </tr>
+          <tr>
+            <th>Standard Uncertainty (u<sub>A</sub>)</th>
+            <td id="reportUA"></td>
+            <td>-</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    
+    <!-- Type B Results -->
+    <div class="section">
+      <h3>5. Type B Uncertainty Evaluation</h3>
+      <table id="typeBTable">
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Estimated Value</th>
+            <th>Uncertainty Estimate</th>
+            <th>Distribution</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    
+    <!-- Uncertainty Budget -->
+    <div class="section">
+      <h3>6. Uncertainty Budget</h3>
+      <table id="budgetTable">
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>Type</th>
+            <th>Value</th>
+            <th>Standard Uncertainty</th>
+            <th>Relative Uncertainty</th>
+            <th>Sensitivity Coefficient</th>
+            <th>Contribution</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    
+    <!-- Combined Uncertainty -->
+    <div class="section">
+      <h3>7. Combined Uncertainty</h3>
+      <div class="summary-box">
+        <p><strong>Combined Standard Uncertainty (u<sub>c</sub>):</strong> <span id="reportUC"></span></p>
+        <p><strong>Expanded Uncertainty (U) at k=2:</strong> <span id="reportUExp"></span></p>
+        <p><strong>Relative Expanded Uncertainty:</strong> <span id="reportURel"></span></p>
+      </div>
+    </div>
+    
+    <!-- Conclusion -->
+    <div class="section">
+      <h3>8. Conclusion</h3>
+      <p>The expanded uncertainty for the determination of <span id="reportFinalParam"></span> in <span id="reportFinalSample"></span> 
+         is <strong><span id="reportFinalU"></span></strong> (k=2), corresponding to a coverage factor of 2 
+         which provides a confidence level of approximately 95%.</p>
+      <p>The measurement result is expressed as: <strong><span id="reportMeanResult"></span> ± <span id="reportFinalU2"></span></strong></p>
+    </div>
+    
+    <!-- Signatures -->
+    <div class="footer section">
+      <div>
+        <p><strong>Prepared by:</strong></p>
+        <div class="signature-line"></div>
+        <p id="reportPreparedBy"></p>
+        <p><em>Date: <span id="reportDate1"></span></em></p>
+      </div>
+      <div>
+        <p><strong>Approved by:</strong></p>
+        <div class="signature-line"></div>
+        <p id="reportApprovedBy"></p>
+        <p><em>Date: <span id="reportDate2"></span></em></p>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Global variables to store calculated values
+  let reportData = {
+    company: "",
+    logo: "",
+    parameter: "",
+    sampleType: "",
+    method: "",
+    procedure: "",
+    formula: "",
+    typeA: { values: [], mean: 0, sd: 0, ua: 0 },
+    typeB: [],
+    combined: { uc: 0, uexp: 0, urel: 0 },
+    preparedBy: "",
+    approvedBy: "",
+    reportDate: ""
+  };
+
+  // Handle logo upload
+  const logoInput = document.getElementById('logoInput');
+  if (logoInput) {
+    logoInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function() {
+          reportData.logo = reader.result;
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  // Update scope parameters when inputs change
+  const parameterInput = document.getElementById('parameter');
+  const sampleTypeInput = document.getElementById('sampleType');
+  if (parameterInput) {
+    parameterInput.addEventListener('input', function() {
+      const scopeParam = document.getElementById('scopeParam');
+      if (scopeParam) scopeParam.textContent = this.value || "N/A";
+    });
+  }
+  if (sampleTypeInput) {
+    sampleTypeInput.addEventListener('input', function() {
+      const scopeSample = document.getElementById('scopeSample');
+      if (scopeSample) scopeSample.textContent = this.value || "N/A";
+    });
+  }
+
+  // Add a new Type B source
+  function addTypeBSource(source = "", value = 0, uncertainty = 0, distribution = "Rectangular (k=√3)", notes = "") {
+    const container = document.getElementById("typeBContainer");
+    if (!container) {
+      console.error("Type B container not found");
+      return;
+    }
+    const id = Date.now();
+    
+    const sourceDiv = document.createElement("div");
+    sourceDiv.className = "typeb-container";
+    sourceDiv.id = `typeB-${id}`;
+    
+    sourceDiv.innerHTML = `
+      <div class="typeb-header">
+        <div>
+          <label>Source Name:</label>
+          <input type="text" id="typeBName-${id}" value="${source}" placeholder="Uncertainty source" style="width: 300px;">
+        </div>
+        <div class="typeb-controls">
+          <button class="remove-btn" onclick="removeTypeBSource('typeB-${id}')">Remove</button>
+        </div>
+      </div>
+      <div class="inputs">
+        <div>
+          <label>Estimated Value:</label>
+          <input type="number" id="typeBValue-${id}" value="${value}" step="0.0001" class="typeb-input">
+        </div>
+        <div>
+          <label>Uncertainty Estimate:</label>
+          <input type="number" id="typeBUncertainty-${id}" value="${uncertainty}" step="0.0001" class="typeb-input">
+        </div>
+        <div>
+          <label>Distribution:</label>
+          <select id="typeBDistribution-${id}">
+            <option value="Rectangular (k=√3)" ${distribution === "Rectangular (k=√3)" ? "selected" : ""}>Rectangular (k=√3)</option>
+            <option value="Normal (k=2)" ${distribution === "Normal (k=2)" ? "selected" : ""}>Normal (k=2)</option>
+            <option value="Triangular (k=√6)" ${distribution === "Triangular (k=√6)" ? "selected" : ""}>Triangular (k=√6)</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label>Notes:</label>
+        <textarea id="typeBNotes-${id}" rows="2" placeholder="Additional notes" style="width: 100%;">${notes}</textarea>
+      </div>
+    `;
+    
+    container.appendChild(sourceDiv);
+  }
+
+  // Remove a Type B source
+  function removeTypeBSource(id) {
+    const sourceDiv = document.getElementById(id);
+    if (sourceDiv) {
+      sourceDiv.remove();
+    }
+  }
+
+  // Generate the report
+  function generateReport() {
+    try {
+      // Reset error messages
+      const typeAError = document.getElementById("typeAError");
+      const generalError = document.getElementById("generalError");
+      if (typeAError) typeAError.style.display = "none";
+      if (generalError) generalError.style.display = "none";
+
+      // Collect input data
+      const inputs = {
+        company: document.getElementById("company"),
+        parameter: document.getElementById("parameter"),
+        sampleType: document.getElementById("sampleType"),
+        method: document.getElementById("method"),
+        procedure: document.getElementById("procedure"),
+        formula: document.getElementById("formula"),
+        preparedBy: document.getElementById("preparedBy"),
+        approvedBy: document.getElementById("approvedBy"),
+        reportDate: document.getElementById("reportDateInput")
+      };
+
+      // Validate input elements
+      for (const [key, element] of Object.entries(inputs)) {
+        if (!element) {
+          throw new Error(`Input element for ${key} not found`);
+        }
+        reportData[key] = element.value || (key === "reportDate" ? new Date().toISOString().split("T")[0] : "N/A");
+      }
+
+      // Type A: Collect repeatability values
+      const typeAInputs = ['val1', 'val2', 'val3', 'val4', 'val5'].map(id => document.getElementById(id));
+      if (typeAInputs.some(input => !input)) {
+        throw new Error("One or more Type A input fields not found");
+      }
+      reportData.typeA.values = typeAInputs
+        .map(input => parseFloat(input.value))
+        .filter(val => !isNaN(val) && val !== 0);
+
+      // Validate Type A values
+      if (reportData.typeA.values.length === 0) {
+        if (typeAError) {
+          typeAError.style.display = "block";
+        }
+        throw new Error("At least one valid Type A value is required");
+      }
+
+      // Calculate Type A statistics
+      const n = reportData.typeA.values.length;
+      reportData.typeA.mean = reportData.typeA.values.reduce((sum, val) => sum + val, 0) / n;
+      const deviations = reportData.typeA.values.map(val => Math.pow(val - reportData.typeA.mean, 2));
+      reportData.typeA.sd = n > 1 ? Math.sqrt(deviations.reduce((sum, val) => sum + val, 0) / (n - 1)) : 0;
+      reportData.typeA.ua = n > 0 ? reportData.typeA.sd / Math.sqrt(n) : 0;
+
+      // Type B: Collect sources
+      reportData.typeB = [];
+      const typeBContainers = document.querySelectorAll(".typeb-container");
+      for (const container of typeBContainers) {
+        if (!container.id || !container.id.startsWith("typeB-")) {
+          console.warn(`Skipping Type B source with invalid ID: ${container.id || 'undefined'}`);
+          continue;
+        }
+        const id = container.id.split("typeB-")[1];
+        if (!id) {
+          console.warn(`Skipping Type B source with malformed ID: ${container.id}`);
+          continue;
+        }
+        const sourceInputs = {
+          name: document.getElementById(`typeBName-${id}`),
+          value: document.getElementById(`typeBValue-${id}`),
+          uncertainty: document.getElementById(`typeBUncertainty-${id}`),
+          distribution: document.getElementById(`typeBDistribution-${id}`),
+          notes: document.getElementById(`typeBNotes-${id}`)
+        };
+        if (Object.values(sourceInputs).some(input => !input)) {
+          console.warn(`Skipping malformed Type B source with ID ${id}: missing input elements`);
+          continue;
+        }
+        const source = {
+          name: sourceInputs.name.value || "N/A",
+          value: parseFloat(sourceInputs.value.value) || 0,
+          uncertainty: parseFloat(sourceInputs.uncertainty.value) || 0,
+          distribution: sourceInputs.distribution.value || "Rectangular (k=√3)",
+          notes: sourceInputs.notes.value || "N/A"
+        };
+        reportData.typeB.push(source);
+      }
+
+      // Calculate contributions (relative uncertainties)
+      const contributions = [];
+      if (reportData.typeA.ua > 0 && reportData.typeA.mean !== 0) {
+        const relativeUncertaintyA = reportData.typeA.ua / reportData.typeA.mean;
+        contributions.push(relativeUncertaintyA);
+      }
+      reportData.typeB.forEach(source => {
+        let divisor = 1;
+        if (source.distribution.includes("Rectangular")) divisor = Math.sqrt(3);
+        else if (source.distribution.includes("Normal")) divisor = 2;
+        else if (source.distribution.includes("Triangular")) divisor = Math.sqrt(6);
+        const standardUncertainty = isNaN(source.uncertainty) ? 0 : source.uncertainty / divisor;
+        if (standardUncertainty > 0 && source.value !== 0) {
+          const relativeUncertaintyB = standardUncertainty / source.value;
+          contributions.push(relativeUncertaintyB);
+        }
+      });
+
+      // Calculate combined uncertainty
+      const relativeUC = Math.sqrt(contributions.reduce((sum, contrib) => sum + Math.pow(contrib, 2), 0));
+      reportData.combined.uc = relativeUC * reportData.typeA.mean;
+      reportData.combined.uexp = reportData.combined.uc * 2; // k=2
+      reportData.combined.urel = reportData.typeA.mean !== 0 ? (reportData.combined.uexp / reportData.typeA.mean) * 100 : 0;
+
+      // Validate output elements
+      const outputElements = {
+        reportCompany: document.getElementById("reportCompany"),
+        reportLogo: document.getElementById("reportLogo"),
+        reportDate: document.getElementById("reportDate"),
+        reportParam: document.getElementById("reportParam"),
+        reportSample: document.getElementById("reportSample"),
+        reportScopeParam: document.getElementById("reportScopeParam"),
+        reportScopeSample: document.getElementById("reportScopeSample"),
+        reportMethod: document.getElementById("reportMethod"),
+        reportProcedure: document.getElementById("reportProcedure"),
+        reportFormula: document.getElementById("reportFormula"),
+        typeATbody: document.querySelector("#typeATable tbody"),
+        reportMean: document.getElementById("reportMean"),
+        reportSD: document.getElementById("reportSD"),
+        reportUA: document.getElementById("reportUA"),
+        reportN: document.getElementById("reportN"),
+        typeBTbody: document.querySelector("#typeBTable tbody"),
+        budgetTbody: document.querySelector("#budgetTable tbody"),
+        reportUC: document.getElementById("reportUC"),
+        reportUExp: document.getElementById("reportUExp"),
+        reportURel: document.getElementById("reportURel"),
+        reportFinalParam: document.getElementById("reportFinalParam"),
+        reportFinalSample: document.getElementById("reportFinalSample"),
+        reportFinalU: document.getElementById("reportFinalU"),
+        reportMeanResult: document.getElementById("reportMeanResult"),
+        reportFinalU2: document.getElementById("reportFinalU2"),
+        reportPreparedBy: document.getElementById("reportPreparedBy"),
+        reportApprovedBy: document.getElementById("reportApprovedBy"),
+        reportDate1: document.getElementById("reportDate1"),
+        reportDate2: document.getElementById("reportDate2"),
+        reportOutput: document.getElementById("reportOutput")
+      };
+
+      for (const [key, element] of Object.entries(outputElements)) {
+        if (!element) {
+          throw new Error(`Output element ${key} not found`);
+        }
+      }
+
+      // Populate report
+      outputElements.reportCompany.textContent = reportData.company;
+      outputElements.reportLogo.innerHTML = reportData.logo ? `<img src="${reportData.logo}" alt="Company Logo">` : "";
+      outputElements.reportDate.textContent = reportData.reportDate;
+      outputElements.reportParam.textContent = reportData.parameter;
+      outputElements.reportSample.textContent = reportData.sampleType;
+      outputElements.reportScopeParam.textContent = reportData.parameter;
+      outputElements.reportScopeSample.textContent = reportData.sampleType;
+      outputElements.reportMethod.textContent = reportData.method;
+      outputElements.reportProcedure.textContent = reportData.procedure;
+      outputElements.reportFormula.innerHTML = reportData.formula ? `\\(${reportData.formula}\\)` : "N/A";
+      if (reportData.formula && typeof MathJax !== "undefined") {
+        MathJax.Hub.Queue(["Typeset", MathJax.Hub, "reportFormula"]);
+      }
+
+      // Type A Table
+      outputElements.typeATbody.innerHTML = "";
+      reportData.typeA.values.forEach((val, i) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>X<sub>${i + 1}</sub></td>
+          <td>${val.toFixed(4)}</td>
+          <td>${(val - reportData.typeA.mean).toFixed(4)}</td>
+        `;
+        outputElements.typeATbody.appendChild(row);
+      });
+      outputElements.reportMean.textContent = reportData.typeA.mean.toFixed(4);
+      outputElements.reportSD.textContent = reportData.typeA.sd.toFixed(4);
+      outputElements.reportUA.textContent = reportData.typeA.ua.toFixed(4);
+      outputElements.reportN.textContent = n;
+
+      // Type B Table
+      outputElements.typeBTbody.innerHTML = "";
+      reportData.typeB.forEach(source => {
+        let divisor = 1;
+        if (source.distribution.includes("Rectangular")) divisor = Math.sqrt(3);
+        else if (source.distribution.includes("Normal")) divisor = 2;
+        else if (source.distribution.includes("Triangular")) divisor = Math.sqrt(6);
+        const standardUncertainty = isNaN(source.uncertainty) ? 0 : source.uncertainty / divisor;
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${source.name}</td>
+          <td>${source.value.toFixed(4)}</td>
+          <td>${standardUncertainty.toFixed(4)}</td>
+          <td>${source.distribution}</td>
+          <td class="left-align">${source.notes}</td>
+        `;
+        outputElements.typeBTbody.appendChild(row);
+      });
+
+      // Uncertainty Budget
+      outputElements.budgetTbody.innerHTML = "";
+      if (reportData.typeA.ua > 0) {
+        const relativeUncertaintyA = reportData.typeA.mean !== 0 ? reportData.typeA.ua / reportData.typeA.mean : 0;
+        const rowA = document.createElement("tr");
+        rowA.innerHTML = `
+          <td>Repeatability</td>
+          <td>Type A</td>
+          <td>${reportData.typeA.mean.toFixed(4)}</td>
+          <td>${reportData.typeA.ua.toFixed(4)}</td>
+          <td>${(relativeUncertaintyA * 100).toFixed(2)}%</td>
+          <td>1</td>
+          <td>${relativeUncertaintyA.toFixed(4)}</td>
+        `;
+        outputElements.budgetTbody.appendChild(rowA);
+      }
+      reportData.typeB.forEach(source => {
+        let divisor = 1;
+        if (source.distribution.includes("Rectangular")) divisor = Math.sqrt(3);
+        else if (source.distribution.includes("Normal")) divisor = 2;
+        else if (source.distribution.includes("Triangular")) divisor = Math.sqrt(6);
+        const standardUncertainty = isNaN(source.uncertainty) ? 0 : source.uncertainty / divisor;
+        const relativeUncertaintyB = source.value !== 0 ? standardUncertainty / source.value : 0;
+        const rowB = document.createElement("tr");
+        rowB.innerHTML = `
+          <td>${source.name}</td>
+          <td>Type B</td>
+          <td>${source.value.toFixed(4)}</td>
+          <td>${standardUncertainty.toFixed(4)}</td>
+          <td>${(relativeUncertaintyB * 100).toFixed(2)}%</td>
+          <td>1</td>
+          <td>${relativeUncertaintyB.toFixed(4)}</td>
+        `;
+        outputElements.budgetTbody.appendChild(rowB);
+      });
+
+      // Combined Uncertainty
+      outputElements.reportUC.textContent = reportData.combined.uc.toFixed(4);
+      outputElements.reportUExp.textContent = reportData.combined.uexp.toFixed(4);
+      outputElements.reportURel.textContent = reportData.combined.urel.toFixed(2) + "%";
+
+      // Conclusion
+      outputElements.reportFinalParam.textContent = reportData.parameter;
+      outputElements.reportFinalSample.textContent = reportData.sampleType;
+      outputElements.reportFinalU.textContent = reportData.combined.uexp.toFixed(3);
+      outputElements.reportMeanResult.textContent = reportData.typeA.mean.toFixed(2);
+      outputElements.reportFinalU2.textContent = reportData.combined.uexp.toFixed(3);
+
+      // Signatures
+      outputElements.reportPreparedBy.textContent = reportData.preparedBy;
+      outputElements.reportApprovedBy.textContent = reportData.approvedBy;
+      outputElements.reportDate1.textContent = reportData.reportDate;
+      outputElements.reportDate2.textContent = reportData.reportDate;
+
+      // Show report
+      outputElements.reportOutput.style.display = "block";
+    } catch (error) {
+      console.error("Error generating report:", {
+        message: error.message,
+        stack: error.stack,
+        inputs: {
+          typeAValues: ['val1', 'val2', 'val3', 'val4', 'val5'].map(id => document.getElementById(id)?.value),
+          typeBCount: document.querySelectorAll(".typeb-container").length
+        }
+      });
+      const generalError = document.getElementById("generalError");
+      if (generalError) {
+        generalError.textContent = `Error generating report: ${error.message}`;
+        generalError.style.display = "block";
+      }
+      alert(`Failed to generate report: ${error.message}. Please check your inputs and try again.`);
+    }
+  }
+
+  // Export to Excel
+  function exportToExcel() {
+    try {
+      if (!reportData.typeA.values.length) {
+        throw new Error("No report data available. Please generate the report first.");
+      }
+      const wb = XLSX.utils.book_new();
+
+      // Type A Data
+      const typeAData = [
+        ["Measurement", "Value", "Deviation"],
+        ...reportData.typeA.values.map((val, i) => [`X${i + 1}`, val, val - reportData.typeA.mean]),
+        ["Mean", reportData.typeA.mean, "-"],
+        ["Standard Deviation", reportData.typeA.sd, "-"],
+        ["Standard Uncertainty (u_A)", reportData.typeA.ua, "-"]
+      ];
+      const typeASheet = XLSX.utils.aoa_to_sheet(typeAData);
+      XLSX.utils.book_append_sheet(wb, typeASheet, "Type A");
+
+      // Type B Data
+      const typeBData = [
+        ["Source", "Estimated Value", "Uncertainty Estimate", "Distribution", "Notes"],
+        ...reportData.typeB.map(source => [
+          source.name,
+          source.value,
+          source.uncertainty,
+          source.distribution,
+          source.notes
+        ])
+      ];
+      const typeBSheet = XLSX.utils.aoa_to_sheet(typeBData);
+      XLSX.utils.book_append_sheet(wb, typeBSheet, "Type B");
+
+      // Uncertainty Budget
+      const budgetData = [
+        ["Source", "Type", "Value", "Standard Uncertainty", "Relative Uncertainty", "Sensitivity Coefficient", "Contribution"]
+      ];
+      if (reportData.typeA.ua > 0) {
+        const relativeUncertaintyA = reportData.typeA.mean !== 0 ? reportData.typeA.ua / reportData.typeA.mean : 0;
+        budgetData.push([
+          "Repeatability", "Type A", reportData.typeA.mean, reportData.typeA.ua,
+          (relativeUncertaintyA * 100).toFixed(2) + "%", 1, relativeUncertaintyA
+        ]);
+      }
+      reportData.typeB.forEach(source => {
+        let divisor = 1;
+        if (source.distribution.includes("Rectangular")) divisor = Math.sqrt(3);
+        else if (source.distribution.includes("Normal")) divisor = 2;
+        else if (source.distribution.includes("Triangular")) divisor = Math.sqrt(6);
+        const standardUncertainty = isNaN(source.uncertainty) ? 0 : source.uncertainty / divisor;
+        const relativeUncertaintyB = source.value !== 0 ? standardUncertainty / source.value : 0;
+        budgetData.push([
+          source.name, "Type B", source.value, standardUncertainty,
+          (relativeUncertaintyB * 100).toFixed(2) + "%", 1, relativeUncertaintyB
+        ]);
+      });
+      const budgetSheet = XLSX.utils.aoa_to_sheet(budgetData);
+      XLSX.utils.book_append_sheet(wb, budgetSheet, "Uncertainty Budget");
+
+      // Summary
+      const summaryData = [
+        ["Parameter", reportData.parameter],
+        ["Sample Type", reportData.sampleType],
+        ["Combined Uncertainty (u_c)", reportData.combined.uc],
+        ["Expanded Uncertainty (U, k=2)", reportData.combined.uexp],
+        ["Relative Expanded Uncertainty", reportData.combined.urel + "%"],
+        ["Prepared By", reportData.preparedBy],
+        ["Approved By", reportData.approvedBy],
+        ["Date", reportData.reportDate]
+      ];
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
+
+      // Download
+      XLSX.writeFile(wb, `Uncertainty_Report_${reportData.reportDate.replace(/-/g, "-")}.xlsx`);
+    } catch (error) {
+      console.error("Error exporting to Excel:", {
+        message: error.message,
+        stack: error.stack
+      });
+      const generalError = document.getElementById("generalError");
+      if (generalError) {
+        generalError.textContent = `Error exporting to Excel: ${error.message}`;
+        generalError.style.display = "block";
+      }
+      alert(`Failed to export to Excel: ${error.message}. Please generate the report first.`);
+    }
+  }
+</script>
+</body>
+</html>
